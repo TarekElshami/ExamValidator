@@ -2,51 +2,294 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 import zipfile
 import os
-from pathlib import Path
 import tempfile
 import shutil
+import json
 
+class LocalizationManager:
+    """Clase para cargar y gestionar las cadenas de texto localizadas."""
+
+    def __init__(self, default_lang='es'):
+        self.language = default_lang
+        self.strings = {}
+        # Cargar idiomas al inicializar
+        self.load_language('es', 'strings_es.json')
+        self.load_language('en', 'strings_en.json')
+        # Establecer idioma inicial
+        self.set_language(default_lang)
+
+    def load_language(self, lang_code, filename):
+        """Carga las cadenas de texto desde un archivo JSON."""
+        try:
+            # En un entorno real, estos archivos deberían existir.
+            # Aquí, creamos un archivo simple si no existe para demostración.
+            if not os.path.exists(filename):
+                self._create_dummy_file(lang_code, filename)
+
+            with open(filename, 'r', encoding='utf-8') as f:
+                self.strings[lang_code] = json.load(f)
+        except Exception as e:
+            print(f"Error al cargar el idioma {lang_code} desde {filename}: {e}")
+            self.strings[lang_code] = {}  # Usar diccionario vacío si falla
+
+    def _create_dummy_file(self, lang_code, filename):
+        """Crea archivos dummy para pruebas si no existen."""
+        if lang_code == 'es':
+            data = {
+                "window_title": "ExamWatcher Log Visualizer",
+                "menu_file": "Archivo",
+                "menu_file_zip": "Seleccionar ZIP del examen...",
+                "menu_file_ref": "Seleccionar Carpeta de Referencia...",
+                "menu_file_exit": "Salir",
+                "menu_lang": "Idioma",
+                "menu_lang_es": "Español",
+                "menu_lang_en": "Inglés",
+                "title": "Validador de Exámenes ExamWatcher",
+                "step1": "1. Seleccionar ZIP del examen:",
+                "step2": "2. Carpeta de referencia (inicial):",
+                "zip_none": "Ningún archivo seleccionado",
+                "ref_none": "Opcional - Para comparar snapshot",
+                "button_browse": "Examinar...",
+                "button_validate": "VALIDAR EXAMEN",
+                "results_title": "Resultados de Validación:",
+                "error_zip_select": "Debe seleccionar un archivo ZIP",
+                "log_extracting": "Extrayendo archivo ZIP...",
+                "log_error_resume": "ERROR: No se encontró resume.txt en el ZIP",
+                "log_info_header": "=" * 80 + "\nINFORMACIÓN DEL ESTUDIANTE\n" + "=" * 80 + "\n",
+                "log_name": "Nombre: {}",
+                "log_start_time": "Hora de inicio: {}\n\n",
+                "log_hash_header": "=" * 80 + "\n1. VALIDACIÓN DE HASH DEL RESUME.TXT\n" + "=" * 80 + "\n",
+                "log_hash_ok": "✓ Hash correcto\n",
+                "log_hash_declared": "  Hash declarado: {}",
+                "log_hash_calculated": "  Hash calculado: {}",
+                "log_hash_error": "✗ HASH INCORRECTO - POSIBLE MANIPULACIÓN\n",
+                "log_hash_diff": "  Diferencia: {}",
+                "log_snapshot_header": "=" * 80 + "\n2. COMPARACIÓN DE SNAPSHOT INICIAL\n" + "=" * 80 + "\n",
+                "log_snapshot_files": "Archivos en snapshot inicial: {}",
+                "log_comparing_ref": "\nComparando con carpeta de referencia...",
+                "log_diff_count_error": "✗ Se encontraron {} diferencias:",
+                "log_diff_file": "\n  Archivo: {}",
+                "log_diff_size": "    Tamaño esperado: {}, actual: {}",
+                "log_diff_lines": "    Líneas esperadas: {}, actuales: {}",
+                "log_snapshot_ok": "✓ El snapshot coincide con la carpeta de referencia\n",
+                "log_no_ref": "⚠ No se proporcionó carpeta de referencia para comparar\n\n",
+                "log_backup_header": "\n" + "=" * 80 + "\n3. VALIDACIÓN DE ARCHIVOS DE BACKUP\n" + "=" * 80 + "\n",
+                "log_backup_expected": "Archivos esperados en backup: {}",
+                "log_backup_found_none": "No se esperaban copias de seguridad y no se encontraron. Comportamiento normal.\n",
+                "log_backup_count_error": "\n✗ {} archivos con problemas:",
+                "log_backup_file_error": "\n  {}: {}",
+                "log_backup_hash_error": "\n  {}:\n    Hash esperado: {}\n    Hash calculado: {}",
+                "log_backup_ok": "✓ Todos los hashes de backup son correctos\n",
+                "log_backup_folder_error": "✗ No se encontró la carpeta .copywatcher_backup\n\n",
+                "log_suspicious_header": "\n" + "=" * 80 + "\n4. ACTIVIDAD SOSPECHOSA (INTERNET ACTIVO)\n" + "=" * 80 + "\n",
+                "log_suspicious_lines": "Total de líneas cambiadas con internet activo: {}",
+                "log_suspicious_limit_error": "✗ LÍMITE EXCEDIDO (máximo: 10 líneas)",
+                "log_suspicious_events_count": "\nEventos sospechosos detectados: {}",
+                "log_suspicious_event": "\nEventos sospechosos:\n",
+                "log_suspicious_event_item": "  - {}",
+                "log_suspicious_ok": "✓ Dentro del límite permitido (10 líneas)\n",
+                "log_summary_header": "\n" + "=" * 80 + "\nRESUMEN FINAL\n" + "=" * 80 + "\n",
+                "log_summary_ok": "✓ EXAMEN VÁLIDO - Sin problemas críticos detectados\n",
+                "log_summary_error": "✗ EXAMEN CON PROBLEMAS - Revisar errores arriba\n",
+                "log_general_error": "\nERROR GENERAL: {}\n"
+            }
+        elif lang_code == 'en':
+            data = {
+                "window_title": "ExamWatcher Log Visualizer",
+                "menu_file": "File",
+                "menu_file_zip": "Select Exam ZIP...",
+                "menu_file_ref": "Select Reference Folder...",
+                "menu_file_exit": "Exit",
+                "menu_lang": "Language",
+                "menu_lang_es": "Spanish",
+                "menu_lang_en": "English",
+                "title": "ExamWatcher Exam Validator",
+                "step1": "1. Select Exam ZIP:",
+                "step2": "2. Reference Folder (Initial):",
+                "zip_none": "No file selected",
+                "ref_none": "Optional - For snapshot comparison",
+                "button_browse": "Browse...",
+                "button_validate": "VALIDATE EXAM",
+                "results_title": "Validation Results:",
+                "error_zip_select": "You must select a ZIP file",
+                "log_extracting": "Extracting ZIP file...",
+                "log_error_resume": "ERROR: resume.txt not found in ZIP",
+                "log_info_header": "=" * 80 + "\nSTUDENT INFORMATION\n" + "=" * 80 + "\n",
+                "log_name": "Name: {}",
+                "log_start_time": "Start Time: {}\n\n",
+                "log_hash_header": "=" * 80 + "\n1. RESUME.TXT HASH VALIDATION\n" + "=" * 80 + "\n",
+                "log_hash_ok": "✓ Correct Hash\n",
+                "log_hash_declared": "  Declared Hash: {}",
+                "log_hash_calculated": "  Calculated Hash: {}",
+                "log_hash_error": "✗ INCORRECT HASH - POSSIBLE MANIPULATION\n",
+                "log_hash_diff": "  Difference: {}",
+                "log_snapshot_header": "=" * 80 + "\n2. INITIAL SNAPSHOT COMPARISON\n" + "=" * 80 + "\n",
+                "log_snapshot_files": "Files in initial snapshot: {}",
+                "log_comparing_ref": "\nComparing with reference folder...",
+                "log_diff_count_error": "✗ Found {} differences:",
+                "log_diff_file": "\n  File: {}",
+                "log_diff_size": "    Expected size: {}, actual: {}",
+                "log_diff_lines": "    Expected lines: {}, actual: {}",
+                "log_snapshot_ok": "✓ Snapshot matches reference folder\n",
+                "log_no_ref": "⚠ No reference folder provided for comparison\n\n",
+                "log_backup_header": "\n" + "=" * 80 + "\n3. BACKUP FILE VALIDATION\n" + "=" * 80 + "\n",
+                "log_backup_expected": "Expected backup files: {}",
+                "log_backup_found_none": "No backups were expected and none were found. Normal behavior.\n",
+                "log_backup_count_error": "\n✗ {} files with issues:",
+                "log_backup_file_error": "\n  {}: {}",
+                "log_backup_hash_error": "\n  {}:\n    Expected Hash: {}\n    Calculated Hash: {}",
+                "log_backup_ok": "✓ All backup hashes are correct\n",
+                "log_backup_folder_error": "✗ .copywatcher_backup folder not found\n\n",
+                "log_suspicious_header": "\n" + "=" * 80 + "\n4. SUSPICIOUS ACTIVITY (NETWORK ACTIVE)\n" + "=" * 80 + "\n",
+                "log_suspicious_lines": "Total lines changed with active network: {}",
+                "log_suspicious_limit_error": "✗ LIMIT EXCEEDED (max: 10 lines)",
+                "log_suspicious_events_count": "\nDetected suspicious events: {}",
+                "log_suspicious_event": "\nSuspicious events:\n",
+                "log_suspicious_event_item": "  - {}",
+                "log_suspicious_ok": "✓ Within allowed limit (10 lines)\n",
+                "log_summary_header": "\n" + "=" * 80 + "\nFINAL SUMMARY\n" + "=" * 80 + "\n",
+                "log_summary_ok": "✓ VALID EXAM - No critical issues detected\n",
+                "log_summary_error": "✗ EXAM WITH ISSUES - Review errors above\n",
+                "log_general_error": "\nGENERAL ERROR: {}\n"
+            }
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    def set_language(self, lang_code):
+        """Cambia el idioma activo."""
+        if lang_code in self.strings:
+            self.language = lang_code
+            return True
+        return False
+
+    def get_string(self, key, *args):
+        """Obtiene la cadena de texto para una clave dada, aplicando formato si hay argumentos."""
+        # Intenta obtener la cadena en el idioma actual
+        s = self.strings.get(self.language, {}).get(key, f"MISSING_STRING:{key}")
+
+        # Si la clave no está en el idioma actual, intenta el español (fallback)
+        if s.startswith("MISSING_STRING"):
+            s = self.strings.get('es', {}).get(key, f"MISSING_STRING:{key}")
+
+        # Aplica formato si hay argumentos
+        try:
+            return s.format(*args)
+        except IndexError:
+            return s  # Devuelve la cadena sin formato si hay un error de formato
+
+
+# --- CLASE PRINCIPAL ---
 
 class ExamValidator:
     def __init__(self, root):
         self.root = root
-        self.root.title("Validador de Exámenes ExamWatcher")
+        self.lang_manager = LocalizationManager()  # Inicializar gestor de idiomas
         self.root.geometry("900x700")
 
         self.zip_path = None
         self.reference_folder = None
         self.temp_dir = None
 
-        self.setup_ui()
+        self.setup_menu()  # Configurar menú
+        self.setup_ui()  # Configurar UI principal
+        self.update_ui_text()  # Aplicar textos iniciales
+
+    def setup_menu(self):
+        """Crea la barra de menú."""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        # Menú Archivo
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(menu=file_menu, label=self.lang_manager.get_string("menu_file"))
+        file_menu.add_command(label=self.lang_manager.get_string("menu_file_zip"), command=self.select_zip)
+        file_menu.add_command(label=self.lang_manager.get_string("menu_file_ref"), command=self.select_reference)
+        file_menu.add_separator()
+        file_menu.add_command(label=self.lang_manager.get_string("menu_file_exit"), command=self.root.quit)
+
+        # Menú Idioma
+        lang_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(menu=lang_menu, label=self.lang_manager.get_string("menu_lang"))
+        lang_menu.add_command(label=self.lang_manager.get_string("menu_lang_es"),
+                              command=lambda: self.set_language('es'))
+        lang_menu.add_command(label=self.lang_manager.get_string("menu_lang_en"),
+                              command=lambda: self.set_language('en'))
+
+        self.menubar = menubar  # Guardar referencia para actualizar
+
+    def set_language(self, lang_code):
+        """Cambia el idioma y actualiza la UI."""
+        if self.lang_manager.set_language(lang_code):
+            self.update_ui_text()
+            # Recrear el menú para actualizar los textos
+            self.setup_menu()
+
+    def update_ui_text(self):
+        """Actualiza todos los textos estáticos de la UI."""
+        self.root.title(self.lang_manager.get_string("window_title"))
+        self.title_label.config(text=self.lang_manager.get_string("title"))
+        self.label_step1.config(text=self.lang_manager.get_string("step1"))
+        self.label_step2.config(text=self.lang_manager.get_string("step2"))
+
+        # Actualizar labels de archivo si no hay nada seleccionado
+        if not self.zip_path:
+            self.zip_label.config(text=self.lang_manager.get_string("zip_none"))
+        if not self.reference_folder:
+            self.ref_label.config(text=self.lang_manager.get_string("ref_none"))
+
+        self.btn_zip.config(text=self.lang_manager.get_string("button_browse"))
+        self.btn_ref.config(text=self.lang_manager.get_string("button_browse"))
+        self.validate_btn.config(text=self.lang_manager.get_string("button_validate"))
+        self.label_results.config(text=self.lang_manager.get_string("results_title"))
 
     def setup_ui(self):
+        """Configura la interfaz principal y el diseño adaptativo (responsive)."""
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        title = ttk.Label(main_frame, text="Validador de Exámenes ExamWatcher",
-                          font=('Arial', 16, 'bold'))
-        title.grid(row=0, column=0, columnspan=3, pady=10)
+        # Configurar la adaptabilidad de la fila 0 y columna 0
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(1, weight=1)  # Columna del path label es la que se expande
+        main_frame.grid_columnconfigure(0, weight=0)
+        main_frame.grid_columnconfigure(2, weight=0)
+        main_frame.grid_rowconfigure(5, weight=1)  # Fila del cuadro de texto de resultados es la que se expande
 
-        ttk.Label(main_frame, text="1. Seleccionar ZIP del examen:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.zip_label = ttk.Label(main_frame, text="Ningún archivo seleccionado", foreground="gray")
-        self.zip_label.grid(row=1, column=1, sticky=tk.W, padx=5)
-        ttk.Button(main_frame, text="Examinar...", command=self.select_zip).grid(row=1, column=2, padx=5)
+        # Título
+        self.title_label = ttk.Label(main_frame, text="", font=('Arial', 16, 'bold'))
+        self.title_label.grid(row=0, column=0, columnspan=3, pady=10, sticky=tk.N)
 
-        ttk.Label(main_frame, text="2. Carpeta de referencia (inicial):").grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.ref_label = ttk.Label(main_frame, text="Opcional - Para comparar snapshot", foreground="gray")
-        self.ref_label.grid(row=2, column=1, sticky=tk.W, padx=5)
-        ttk.Button(main_frame, text="Examinar...", command=self.select_reference).grid(row=2, column=2, padx=5)
+        # 1. Seleccionar ZIP
+        self.label_step1 = ttk.Label(main_frame, text="")
+        self.label_step1.grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.zip_label = ttk.Label(main_frame, text="", foreground="gray")
+        self.zip_label.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=5)  # Sticky E para adaptabilidad
+        self.btn_zip = ttk.Button(main_frame, text="", command=self.select_zip)
+        self.btn_zip.grid(row=1, column=2, padx=5)
 
-        self.validate_btn = ttk.Button(main_frame, text="VALIDAR EXAMEN",
+        # 2. Carpeta de referencia
+        self.label_step2 = ttk.Label(main_frame, text="")
+        self.label_step2.grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.ref_label = ttk.Label(main_frame, text="", foreground="gray")
+        self.ref_label.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=5)  # Sticky E para adaptabilidad
+        self.btn_ref = ttk.Button(main_frame, text="", command=self.select_reference)
+        self.btn_ref.grid(row=2, column=2, padx=5)
+
+        # Botón de validación
+        self.validate_btn = ttk.Button(main_frame, text="",
                                        command=self.validate_exam, state=tk.DISABLED)
-        self.validate_btn.grid(row=3, column=0, columnspan=3, pady=20)
+        self.validate_btn.grid(row=3, column=0, columnspan=3, pady=20,
+                               sticky=(tk.W, tk.E))  # Sticky W+E para centrar y expandir
 
-        ttk.Label(main_frame, text="Resultados de Validación:",
-                  font=('Arial', 12, 'bold')).grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=5)
+        # Resultados
+        self.label_results = ttk.Label(main_frame, text="", font=('Arial', 12, 'bold'))
+        self.label_results.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=5)
 
         self.results_text = scrolledtext.ScrolledText(main_frame, width=100, height=30,
                                                       font=('Courier', 9))
-        self.results_text.grid(row=5, column=0, columnspan=3, pady=5)
+        self.results_text.grid(row=5, column=0, columnspan=3, pady=5,
+                               sticky=(tk.W, tk.E, tk.N, tk.S))  # Sticky para adaptabilidad
 
         self.results_text.tag_config("error", foreground="red", font=('Courier', 9, 'bold'))
         self.results_text.tag_config("warning", foreground="#FF4500", font=('Courier', 9, 'bold'))
@@ -54,9 +297,10 @@ class ExamValidator:
         self.results_text.tag_config("info", foreground="blue", font=('Courier', 9, 'bold'))
         self.results_text.tag_config("header", font=('Courier', 10, 'bold'))
 
+    # Métodos de selección de archivos/carpetas (se mantienen)
     def select_zip(self):
         filename = filedialog.askopenfilename(
-            title="Seleccionar ZIP del examen",
+            title=self.lang_manager.get_string("menu_file_zip"),
             filetypes=[("Archivos ZIP", "*.zip"), ("Todos los archivos", "*.*")]
         )
         if filename:
@@ -65,11 +309,12 @@ class ExamValidator:
             self.validate_btn.config(state=tk.NORMAL)
 
     def select_reference(self):
-        dirname = filedialog.askdirectory(title="Seleccionar carpeta de referencia")
+        dirname = filedialog.askdirectory(title=self.lang_manager.get_string("menu_file_ref"))
         if dirname:
             self.reference_folder = dirname
             self.ref_label.config(text=os.path.basename(dirname), foreground="black")
 
+    # Métodos de cálculo de hash y parsing (se mantienen igual)
     def calculate_file_hash(self, content):
         """Calcula el hash de un archivo individual (para backups)"""
         hash_value = 29366927
@@ -124,19 +369,8 @@ class ExamValidator:
                             hash_value += signed_byte * mult
                         position += len(buffer)
 
-        # DEBUG
-        print(f"\n=== CÁLCULO DE HASH ===")
-        print(f"Hash después del nombre: {hash_value}")
-        print(f"Archivos procesados: {len(processed_files)}")
-        for f in processed_files[:20]:
-            print(f"  - {f}")
-        if len(processed_files) > 20:
-            print(f"  ... y {len(processed_files) - 20} más")
-
         # 3. Agregar el número de mensajes de log
         hash_value += len(log_messages)
-        print(f"Mensajes de log: {len(log_messages)}")
-        print(f"Hash final: {hash_value}")
 
         return hash_value
 
@@ -332,15 +566,17 @@ class ExamValidator:
                 return os.path.join(root, '.copywatcher_backup')
         return None
 
+    # --- MÉTODO PRINCIPAL DE VALIDACIÓN (USANDO LOCALIZACIÓN) ---
     def validate_exam(self):
         self.results_text.delete(1.0, tk.END)
         if not self.zip_path:
-            messagebox.showerror("Error", "Debe seleccionar un archivo ZIP")
+            messagebox.showerror(self.lang_manager.get_string("window_title"),
+                                 self.lang_manager.get_string("error_zip_select"))
             return
 
         try:
             self.temp_dir = tempfile.mkdtemp()
-            self.log("Extrayendo archivo ZIP...\n", "info")
+            self.log(self.lang_manager.get_string("log_extracting") + "\n", "info")
             with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
                 zip_ref.extractall(self.temp_dir)
 
@@ -353,7 +589,7 @@ class ExamValidator:
                     break
 
             if not resume_path:
-                self.log("ERROR: No se encontró resume.txt en el ZIP\n", "error")
+                self.log(self.lang_manager.get_string("log_error_resume") + "\n", "error")
                 return
 
             with open(resume_path, 'r', encoding='utf-8') as f:
@@ -361,10 +597,9 @@ class ExamValidator:
 
             parsed = self.parse_resume(resume_content)
 
-            self.log("=" * 80 + "\n", "header")
-            self.log("INFORMACIÓN DEL ESTUDIANTE\n", "header")
-            self.log("=" * 80 + "\n", "header")
-            self.log(f"Nombre: {parsed['student_name']}\n", "info")
+            # 1. INFORMACIÓN DEL ESTUDIANTE
+            self.log(self.lang_manager.get_string("log_info_header"), "header")
+            self.log(self.lang_manager.get_string("log_name", parsed['student_name']) + "\n", "info")
 
             start_time = None
             for msg in parsed['log_messages']:
@@ -372,99 +607,111 @@ class ExamValidator:
                     start_time = msg.split(' - ')[0]
                     break
             if start_time:
-                self.log(f"Hora de inicio: {start_time}\n\n", "info")
+                self.log(self.lang_manager.get_string("log_start_time", start_time), "info")
 
-            self.log("=" * 80 + "\n", "header")
-            self.log("1. VALIDACIÓN DE HASH DEL RESUME.TXT\n", "header")
-            self.log("=" * 80 + "\n", "header")
+            # 2. VALIDACIÓN DE HASH
+            self.log(self.lang_manager.get_string("log_hash_header"), "header")
 
             calculated_hash = self.calculate_resume_hash(self.zip_path, parsed['student_name'], parsed['log_messages'])
             hash_matches = calculated_hash == parsed['declared_hash']
             if hash_matches:
-                self.log(f"✓ Hash correcto\n", "success")
-                self.log(f"  Hash declarado: {parsed['declared_hash']}\n")
-                self.log(f"  Hash calculado: {calculated_hash}\n\n")
+                self.log(self.lang_manager.get_string("log_hash_ok"), "success")
+                self.log(self.lang_manager.get_string("log_hash_declared", parsed['declared_hash']) + "\n")
+                self.log(self.lang_manager.get_string("log_hash_calculated", calculated_hash) + "\n\n")
             else:
-                self.log(f"✗ HASH INCORRECTO - POSIBLE MANIPULACIÓN\n", "error")
-                self.log(f"  Hash declarado: {parsed['declared_hash']}\n", "error")
-                self.log(f"  Hash calculado: {calculated_hash}\n\n", "error")
-                self.log(f"  Diferencia: {abs(calculated_hash - parsed['declared_hash'])}\n", "error")
+                self.log(self.lang_manager.get_string("log_hash_error"), "error")
+                self.log(self.lang_manager.get_string("log_hash_declared", parsed['declared_hash']) + "\n", "error")
+                self.log(self.lang_manager.get_string("log_hash_calculated", calculated_hash) + "\n", "error")
+                self.log(self.lang_manager.get_string("log_hash_diff",
+                                                      abs(calculated_hash - parsed['declared_hash'])) + "\n", "error")
 
-            self.log("=" * 80 + "\n", "header")
-            self.log("2. COMPARACIÓN DE SNAPSHOT INICIAL\n", "header")
-            self.log("=" * 80 + "\n", "header")
+            # 3. COMPARACIÓN DE SNAPSHOT INICIAL
+            self.log(self.lang_manager.get_string("log_snapshot_header"), "header")
 
             snapshot = self.extract_initial_snapshot(parsed['log_messages'], project_folder)
-            self.log(f"Archivos en snapshot inicial: {len(snapshot)}\n")
+            self.log(self.lang_manager.get_string("log_snapshot_files", len(snapshot)) + "\n")
 
             if self.reference_folder:
-                self.log("\nComparando con carpeta de referencia...\n", "info")
+                self.log(self.lang_manager.get_string("log_comparing_ref") + "\n", "info")
                 differences = self.compare_with_reference(snapshot, self.reference_folder)
                 if differences:
-                    self.log(f"✗ Se encontraron {len(differences)} diferencias:\n", "warning")
+                    self.log(self.lang_manager.get_string("log_diff_count_error", len(differences)) + "\n", "warning")
                     for diff in differences:
-                        self.log(f"\n  Archivo: {diff['file']}\n", "warning")
-                        self.log(f"    Tamaño esperado: {diff['expected_size']}, actual: {diff['actual_size']}\n")
-                        self.log(f"    Líneas esperadas: {diff['expected_lines']}, actuales: {diff['actual_lines']}\n")
+                        self.log(self.lang_manager.get_string("log_diff_file", diff['file']) + "\n", "warning")
+                        self.log(self.lang_manager.get_string("log_diff_size", diff['expected_size'],
+                                                              diff['actual_size']) + "\n")
+                        self.log(self.lang_manager.get_string("log_diff_lines", diff['expected_lines'],
+                                                              diff['actual_lines']) + "\n")
                 else:
-                    self.log("✓ El snapshot coincide con la carpeta de referencia\n", "success")
+                    self.log(self.lang_manager.get_string("log_snapshot_ok"), "success")
             else:
-                self.log("⚠ No se proporcionó carpeta de referencia para comparar\n\n", "warning")
+                self.log(self.lang_manager.get_string("log_no_ref"), "warning")
 
-            self.log("\n" + "=" * 80 + "\n", "header")
-            self.log("3. VALIDACIÓN DE ARCHIVOS DE BACKUP\n", "header")
-            self.log("=" * 80 + "\n", "header")
+            # 4. VALIDACIÓN DE ARCHIVOS DE BACKUP
+            self.log(self.lang_manager.get_string("log_backup_header"), "header")
 
             backup_folder = self.find_backup_folder(self.temp_dir)
             backup_hashes = self.extract_backup_hashes(parsed['log_messages'])
-            self.log(f"Archivos esperados en backup: {len(backup_hashes)}\n")
 
-            if backup_folder:
-                validation_results = self.validate_backup_files(backup_folder, backup_hashes)
-                failed = [r for r in validation_results if not r.get('matches', False)]
-                if failed:
-                    self.log(f"\n✗ {len(failed)} archivos con problemas:\n", "error")
-                    for result in failed:
-                        if 'error' in result:
-                            self.log(f"\n  {result['file']}: {result['error']}\n", "error")
-                        else:
-                            self.log(f"\n  {result['file']}:\n", "error")
-                            self.log(f"    Hash esperado: {result['expected']}\n")
-                            self.log(f"    Hash calculado: {result['calculated']}\n")
+            self.log(self.lang_manager.get_string("log_backup_expected", len(backup_hashes)) + "\n")
+
+            if not backup_hashes:
+                # Caso especial: No hay archivos de backup esperados.
+                # Se considera OK si tampoco hay carpeta de backup (si no se hizo ninguna modificación).
+                if not backup_folder:
+                    self.log(self.lang_manager.get_string("log_backup_found_none"), "info")
                 else:
-                    self.log("✓ Todos los hashes de backup son correctos\n", "success")
-            else:
-                self.log("✗ No se encontró la carpeta .copywatcher_backup\n\n", "error")
+                    # Esto podría ser un error si el log no se generó correctamente, pero aquí asumimos que es una advertencia.
+                    self.log(self.lang_manager.get_string("log_backup_folder_error"), "warning")
 
-            self.log("\n" + "=" * 80 + "\n", "header")
-            self.log("4. ACTIVIDAD SOSPECHOSA (INTERNET ACTIVO)\n", "header")
-            self.log("=" * 80 + "\n", "header")
+            elif backup_folder:
+                validation_results = self.validate_backup_files(backup_folder, backup_hashes)
+                failed = [r for r in validation_results if not r.get('matches', False) and 'error' not in r]
+                errors = [r for r in validation_results if 'error' in r]
+
+                if failed or errors:
+                    self.log(self.lang_manager.get_string("log_backup_count_error", len(failed) + len(errors)) + "\n",
+                             "error")
+                    for result in errors:
+                        self.log(self.lang_manager.get_string("log_backup_file_error", result['file'],
+                                                              result['error']) + "\n", "error")
+                    for result in failed:
+                        self.log(
+                            self.lang_manager.get_string("log_backup_hash_error", result['file'], result['expected'],
+                                                         result['calculated']) + "\n", "error")
+                else:
+                    self.log(self.lang_manager.get_string("log_backup_ok"), "success")
+            else:
+                self.log(self.lang_manager.get_string("log_backup_folder_error"), "error")
+
+            # 5. ACTIVIDAD SOSPECHOSA
+            self.log(self.lang_manager.get_string("log_suspicious_header"), "header")
 
             suspicious_lines, suspicious_events = self.count_suspicious_lines(parsed['log_messages'])
-            self.log(f"Total de líneas cambiadas con internet activo: {suspicious_lines}\n")
+            self.log(self.lang_manager.get_string("log_suspicious_lines", suspicious_lines) + "\n")
 
             if suspicious_lines > 10:
-                self.log(f"✗ LÍMITE EXCEDIDO (máximo: 10 líneas)\n", "error")
-                self.log(f"\nEventos sospechosos detectados: {len(suspicious_events)}\n", "warning")
+                self.log(self.lang_manager.get_string("log_suspicious_limit_error") + "\n", "error")
+                self.log(self.lang_manager.get_string("log_suspicious_events_count", len(suspicious_events)) + "\n",
+                         "warning")
                 if suspicious_events:
-                    self.log("\nEventos sospechosos:\n", "warning")
+                    self.log(self.lang_manager.get_string("log_suspicious_event"), "warning")
                     for event in suspicious_events:
-                        self.log(f"  - {event}\n", "warning")
+                        self.log(self.lang_manager.get_string("log_suspicious_event_item", event) + "\n", "warning")
             else:
-                self.log(f"✓ Dentro del límite permitido (10 líneas)\n", "success")
+                self.log(self.lang_manager.get_string("log_suspicious_ok"), "success")
 
-            self.log("\n" + "=" * 80 + "\n", "header")
-            self.log("RESUMEN FINAL\n", "header")
-            self.log("=" * 80 + "\n", "header")
+            # 6. RESUMEN FINAL
+            self.log("\n" + self.lang_manager.get_string("log_summary_header"), "header")
 
             all_ok = hash_matches and suspicious_lines <= 10
             if all_ok:
-                self.log("✓ EXAMEN VÁLIDO - Sin problemas críticos detectados\n", "success")
+                self.log(self.lang_manager.get_string("log_summary_ok"), "success")
             else:
-                self.log("✗ EXAMEN CON PROBLEMAS - Revisar errores arriba\n", "error")
+                self.log(self.lang_manager.get_string("log_summary_error"), "error")
 
         except Exception as e:
-            self.log(f"\nERROR GENERAL: {str(e)}\n", "error")
+            self.log(self.lang_manager.get_string("log_general_error", str(e)), "error")
             import traceback
             self.log(traceback.format_exc(), "error")
         finally:
