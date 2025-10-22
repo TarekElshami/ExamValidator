@@ -6,6 +6,9 @@ import tempfile
 import shutil
 import json
 
+
+# --- LocalizationManager (Clase para gestionar las cadenas de texto) ---
+
 class LocalizationManager:
     """Clase para cargar y gestionar las cadenas de texto localizadas."""
 
@@ -21,8 +24,6 @@ class LocalizationManager:
     def load_language(self, lang_code, filename):
         """Carga las cadenas de texto desde un archivo JSON."""
         try:
-            # En un entorno real, estos archivos deberían existir.
-            # Aquí, creamos un archivo simple si no existe para demostración.
             if not os.path.exists(filename):
                 self._create_dummy_file(lang_code, filename)
 
@@ -30,7 +31,7 @@ class LocalizationManager:
                 self.strings[lang_code] = json.load(f)
         except Exception as e:
             print(f"Error al cargar el idioma {lang_code} desde {filename}: {e}")
-            self.strings[lang_code] = {}  # Usar diccionario vacío si falla
+            self.strings[lang_code] = {}
 
     def _create_dummy_file(self, lang_code, filename):
         """Crea archivos dummy para pruebas si no existen."""
@@ -165,42 +166,43 @@ class LocalizationManager:
 
     def get_string(self, key, *args):
         """Obtiene la cadena de texto para una clave dada, aplicando formato si hay argumentos."""
-        # Intenta obtener la cadena en el idioma actual
         s = self.strings.get(self.language, {}).get(key, f"MISSING_STRING:{key}")
-
-        # Si la clave no está en el idioma actual, intenta el español (fallback)
         if s.startswith("MISSING_STRING"):
             s = self.strings.get('es', {}).get(key, f"MISSING_STRING:{key}")
-
-        # Aplica formato si hay argumentos
         try:
             return s.format(*args)
         except IndexError:
-            return s  # Devuelve la cadena sin formato si hay un error de formato
+            return s
 
 
-# --- CLASE PRINCIPAL ---
+# --- CLASE PRINCIPAL: ExamValidator (Con UX Mejorado) ---
 
 class ExamValidator:
     def __init__(self, root):
         self.root = root
-        self.lang_manager = LocalizationManager()  # Inicializar gestor de idiomas
-        self.root.geometry("900x700")
+        self.lang_manager = LocalizationManager()
+
+        # 🔑 UX: Aumentar tamaño inicial y tamaño mínimo
+        self.root.geometry("1000x800")
+        self.root.minsize(800, 600)
+
+        # 🔑 UX: Configurar adaptabilidad de la raíz para manejo de maximización
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
 
         self.zip_path = None
         self.reference_folder = None
         self.temp_dir = None
 
-        self.setup_menu()  # Configurar menú
-        self.setup_ui()  # Configurar UI principal
-        self.update_ui_text()  # Aplicar textos iniciales
+        self.setup_menu()
+        self.setup_ui()
+        self.update_ui_text()
 
     def setup_menu(self):
         """Crea la barra de menú."""
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
 
-        # Menú Archivo
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(menu=file_menu, label=self.lang_manager.get_string("menu_file"))
         file_menu.add_command(label=self.lang_manager.get_string("menu_file_zip"), command=self.select_zip)
@@ -208,7 +210,6 @@ class ExamValidator:
         file_menu.add_separator()
         file_menu.add_command(label=self.lang_manager.get_string("menu_file_exit"), command=self.root.quit)
 
-        # Menú Idioma
         lang_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(menu=lang_menu, label=self.lang_manager.get_string("menu_lang"))
         lang_menu.add_command(label=self.lang_manager.get_string("menu_lang_es"),
@@ -216,13 +217,12 @@ class ExamValidator:
         lang_menu.add_command(label=self.lang_manager.get_string("menu_lang_en"),
                               command=lambda: self.set_language('en'))
 
-        self.menubar = menubar  # Guardar referencia para actualizar
+        self.menubar = menubar
 
     def set_language(self, lang_code):
         """Cambia el idioma y actualiza la UI."""
         if self.lang_manager.set_language(lang_code):
             self.update_ui_text()
-            # Recrear el menú para actualizar los textos
             self.setup_menu()
 
     def update_ui_text(self):
@@ -232,7 +232,6 @@ class ExamValidator:
         self.label_step1.config(text=self.lang_manager.get_string("step1"))
         self.label_step2.config(text=self.lang_manager.get_string("step2"))
 
-        # Actualizar labels de archivo si no hay nada seleccionado
         if not self.zip_path:
             self.zip_label.config(text=self.lang_manager.get_string("zip_none"))
         if not self.reference_folder:
@@ -244,60 +243,81 @@ class ExamValidator:
         self.label_results.config(text=self.lang_manager.get_string("results_title"))
 
     def setup_ui(self):
-        """Configura la interfaz principal y el diseño adaptativo (responsive)."""
-        main_frame = ttk.Frame(self.root, padding="10")
+        """Configura la interfaz principal con adaptabilidad y prioridad en el área del log."""
+
+        main_frame = ttk.Frame(self.root, padding="20 10 20 10")  # 🔑 UX: Aumentar padding
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Configurar la adaptabilidad de la fila 0 y columna 0
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(0, weight=1)
-        main_frame.grid_columnconfigure(1, weight=1)  # Columna del path label es la que se expande
+        # 🔑 UX: Adaptabilidad Horizontal
+        main_frame.grid_columnconfigure(1, weight=1)  # Columna del path label se expande
         main_frame.grid_columnconfigure(0, weight=0)
         main_frame.grid_columnconfigure(2, weight=0)
-        main_frame.grid_rowconfigure(5, weight=1)  # Fila del cuadro de texto de resultados es la que se expande
+
+        # 🔑 UX: Adaptabilidad Vertical
+        main_frame.grid_rowconfigure(6, weight=1)  # Fila del log (ScrolledText) se expande
 
         # Título
-        self.title_label = ttk.Label(main_frame, text="", font=('Arial', 16, 'bold'))
-        self.title_label.grid(row=0, column=0, columnspan=3, pady=10, sticky=tk.N)
+        self.title_label = ttk.Label(main_frame, text="", font=('Arial', 18, 'bold'), anchor='center')
+        self.title_label.grid(row=0, column=0, columnspan=3, pady="10 15", sticky=(tk.W, tk.E))
+
+        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E),
+                                                             pady="0 10")
 
         # 1. Seleccionar ZIP
-        self.label_step1 = ttk.Label(main_frame, text="")
-        self.label_step1.grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.zip_label = ttk.Label(main_frame, text="", foreground="gray")
-        self.zip_label.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=5)  # Sticky E para adaptabilidad
-        self.btn_zip = ttk.Button(main_frame, text="", command=self.select_zip)
-        self.btn_zip.grid(row=1, column=2, padx=5)
+        self.label_step1 = ttk.Label(main_frame, text="", font=('Arial', 10, 'bold'))
+        self.label_step1.grid(row=2, column=0, sticky=tk.W, pady=5, padx="0 10")
+
+        self.zip_label = ttk.Label(main_frame, text="", foreground="gray", anchor=tk.W, relief=tk.GROOVE,
+                                   padding="5 3")  # 🔑 UX: Relieve y padding para path
+        self.zip_label.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=5)
+
+        self.btn_zip = ttk.Button(main_frame, text="Examinar...", command=self.select_zip)
+        self.btn_zip.grid(row=2, column=2, padx="10 0")
 
         # 2. Carpeta de referencia
-        self.label_step2 = ttk.Label(main_frame, text="")
-        self.label_step2.grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.ref_label = ttk.Label(main_frame, text="", foreground="gray")
-        self.ref_label.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=5)  # Sticky E para adaptabilidad
-        self.btn_ref = ttk.Button(main_frame, text="", command=self.select_reference)
-        self.btn_ref.grid(row=2, column=2, padx=5)
+        self.label_step2 = ttk.Label(main_frame, text="", font=('Arial', 10, 'bold'))
+        self.label_step2.grid(row=3, column=0, sticky=tk.W, pady=5, padx="0 10")
+
+        self.ref_label = ttk.Label(main_frame, text="", foreground="gray", anchor=tk.W, relief=tk.GROOVE,
+                                   padding="5 3")  # 🔑 UX: Relieve y padding para path
+        self.ref_label.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=5)
+
+        self.btn_ref = ttk.Button(main_frame, text="Examinar...", command=self.select_reference)
+        self.btn_ref.grid(row=3, column=2, padx="10 0")
 
         # Botón de validación
         self.validate_btn = ttk.Button(main_frame, text="",
-                                       command=self.validate_exam, state=tk.DISABLED)
-        self.validate_btn.grid(row=3, column=0, columnspan=3, pady=20,
-                               sticky=(tk.W, tk.E))  # Sticky W+E para centrar y expandir
+                                       command=self.validate_exam, state=tk.DISABLED,
+                                       style='Accent.TButton')
+        self.validate_btn.grid(row=4, column=0, columnspan=3, pady="20 15",
+                               sticky=(tk.W, tk.E))  # 🔑 UX: Expansión para prominencia
 
-        # Resultados
+        # Resultados Título
         self.label_results = ttk.Label(main_frame, text="", font=('Arial', 12, 'bold'))
-        self.label_results.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=5)
+        # 🔑 UX: Aumento de pady para evitar que la 'g' en 'Log' se corte
+        self.label_results.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady="15 5")
 
-        self.results_text = scrolledtext.ScrolledText(main_frame, width=100, height=30,
-                                                      font=('Courier', 9))
-        self.results_text.grid(row=5, column=0, columnspan=3, pady=5,
-                               sticky=(tk.W, tk.E, tk.N, tk.S))  # Sticky para adaptabilidad
+        # Área de Visualización del Log (ScrolledText)
+        self.results_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD,
+                                                      font=('Courier', 10), relief=tk.SUNKEN)
+        # 🔑 UX: Sticky N, S, W, E y rowconfigure weight=1 para maximizar el espacio
+        self.results_text.grid(row=6, column=0, columnspan=3, pady="5 0",
+                               sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        self.results_text.tag_config("error", foreground="red", font=('Courier', 9, 'bold'))
-        self.results_text.tag_config("warning", foreground="#FF4500", font=('Courier', 9, 'bold'))
-        self.results_text.tag_config("success", foreground="green", font=('Courier', 9, 'bold'))
-        self.results_text.tag_config("info", foreground="blue", font=('Courier', 9, 'bold'))
-        self.results_text.tag_config("header", font=('Courier', 10, 'bold'))
+        # Configuración de Tags
+        self.results_text.tag_config("error", foreground="red", font=('Courier', 10, 'bold'))
+        self.results_text.tag_config("warning", foreground="#FF4500", font=('Courier', 10, 'bold'))
+        self.results_text.tag_config("success", foreground="green", font=('Courier', 10, 'bold'))
+        self.results_text.tag_config("info", foreground="blue", font=('Courier', 10, 'normal'))
+        self.results_text.tag_config("header", font=('Courier', 11, 'bold'))
 
-    # Métodos de selección de archivos/carpetas (se mantienen)
+        try:
+            style = ttk.Style()
+            style.theme_use('clam')
+            style.configure('Accent.TButton', font=('Arial', 12, 'bold'), background='#0078D4', foreground='black')
+        except Exception:
+            pass
+
     def select_zip(self):
         filename = filedialog.askopenfilename(
             title=self.lang_manager.get_string("menu_file_zip"),
@@ -305,18 +325,19 @@ class ExamValidator:
         )
         if filename:
             self.zip_path = filename
-            self.zip_label.config(text=os.path.basename(filename), foreground="black")
+            display_text = os.path.basename(filename)
+            self.zip_label.config(text=display_text, foreground="black")
             self.validate_btn.config(state=tk.NORMAL)
 
     def select_reference(self):
         dirname = filedialog.askdirectory(title=self.lang_manager.get_string("menu_file_ref"))
         if dirname:
             self.reference_folder = dirname
-            self.ref_label.config(text=os.path.basename(dirname), foreground="black")
+            display_text = os.path.basename(dirname)
+            self.ref_label.config(text=display_text, foreground="black")
 
-    # Métodos de cálculo de hash y parsing (se mantienen igual)
+    # Métodos de cálculo de hash y parsing (lógica de negocio)
     def calculate_file_hash(self, content):
-        """Calcula el hash de un archivo individual (para backups)"""
         hash_value = 29366927
         if isinstance(content, str):
             content = content.encode('utf-8')
@@ -329,34 +350,21 @@ class ExamValidator:
         return hash_value
 
     def calculate_resume_hash(self, zip_path, student_name, log_messages):
-        """Calcula el hash de resume.txt EXACTAMENTE como Java - SIN EXCLUIR NINGÚN ARCHIVO"""
         hash_value = 29366927
-
-        # 1. Hash del nombre del estudiante
         name_bytes = student_name.encode('utf-8')
         for i, byte in enumerate(name_bytes):
             mult = 1 if (i % 2) == 0 else 100
             signed_byte = byte if byte < 128 else byte - 256
             hash_value += signed_byte * mult
 
-        # 2. Hash de TODOS los archivos en el ZIP (excepto resume.txt que se añade al final)
-        processed_files = []
-
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            # Obtener todos los archivos y ordenarlos alfabéticamente
             all_files = sorted([f for f in zip_ref.infolist() if not f.is_dir()],
                                key=lambda x: x.filename)
-
             for file_info in all_files:
                 file_name = file_info.filename
-
-                # Solo excluir resume.txt (se procesa al final en Java)
                 if file_name.endswith('resume.txt'):
                     continue
-
-                processed_files.append(file_name)
                 position = 0
-
                 with zip_ref.open(file_name) as f:
                     while True:
                         buffer = f.read(4096)
@@ -368,10 +376,7 @@ class ExamValidator:
                             signed_byte = byte if byte < 128 else byte - 256
                             hash_value += signed_byte * mult
                         position += len(buffer)
-
-        # 3. Agregar el número de mensajes de log
         hash_value += len(log_messages)
-
         return hash_value
 
     def parse_resume(self, content):
@@ -435,7 +440,6 @@ class ExamValidator:
                             }
                     except:
                         pass
-
         return snapshot
 
     def extract_backup_hashes(self, log_messages):
@@ -453,13 +457,11 @@ class ExamValidator:
         return backup_files
 
     def count_suspicious_lines(self, log_messages):
-        """Cuenta líneas modificadas con internet activo, excluyendo cambios de 0 líneas y archivos de backup"""
         total_lines = 0
         suspicious_events = []
 
         for msg in log_messages:
             if '[SUSPICIOUS: network was active]' in msg:
-                # Excluir archivos de backup (.copywatcher_backup)
                 if '.copywatcher_backup' in msg:
                     continue
 
@@ -470,8 +472,6 @@ class ExamValidator:
                             if '[' in lines_part:
                                 change = lines_part.split('[')[0].strip()
                                 change_value = int(change.replace('+', '').replace('-', ''))
-
-                                # Solo contar si hay cambio real
                                 if change_value != 0:
                                     total_lines += abs(change_value)
                                     suspicious_events.append(msg)
@@ -483,13 +483,11 @@ class ExamValidator:
                         if 'lines)' in msg:
                             lines_part = msg.split('lines)')[0].split(',')[-1].strip()
                             lines_count = int(lines_part.split()[0])
-
                             if lines_count > 0:
                                 total_lines += lines_count
                                 suspicious_events.append(msg)
                     except:
                         pass
-
         return total_lines, suspicious_events
 
     def compare_with_reference(self, snapshot, reference_folder):
@@ -529,7 +527,6 @@ class ExamValidator:
                     'expected_lines': expected['lines'],
                     'actual_lines': 'N/A'
                 })
-
         return differences
 
     def validate_backup_files(self, backup_folder, expected_hashes):
@@ -566,13 +563,15 @@ class ExamValidator:
                 return os.path.join(root, '.copywatcher_backup')
         return None
 
-    # --- MÉTODO PRINCIPAL DE VALIDACIÓN (USANDO LOCALIZACIÓN) ---
+    # --- MÉTODO PRINCIPAL DE VALIDACIÓN ---
     def validate_exam(self):
         self.results_text.delete(1.0, tk.END)
         if not self.zip_path:
             messagebox.showerror(self.lang_manager.get_string("window_title"),
                                  self.lang_manager.get_string("error_zip_select"))
             return
+
+        critical_error = False
 
         try:
             self.temp_dir = tempfile.mkdtemp()
@@ -590,6 +589,7 @@ class ExamValidator:
 
             if not resume_path:
                 self.log(self.lang_manager.get_string("log_error_resume") + "\n", "error")
+                critical_error = True
                 return
 
             with open(resume_path, 'r', encoding='utf-8') as f:
@@ -624,6 +624,7 @@ class ExamValidator:
                 self.log(self.lang_manager.get_string("log_hash_calculated", calculated_hash) + "\n", "error")
                 self.log(self.lang_manager.get_string("log_hash_diff",
                                                       abs(calculated_hash - parsed['declared_hash'])) + "\n", "error")
+                critical_error = True
 
             # 3. COMPARACIÓN DE SNAPSHOT INICIAL
             self.log(self.lang_manager.get_string("log_snapshot_header"), "header")
@@ -642,6 +643,7 @@ class ExamValidator:
                                                               diff['actual_size']) + "\n")
                         self.log(self.lang_manager.get_string("log_diff_lines", diff['expected_lines'],
                                                               diff['actual_lines']) + "\n")
+                    critical_error = True  # Las diferencias en snapshot inicial son un problema serio.
                 else:
                     self.log(self.lang_manager.get_string("log_snapshot_ok"), "success")
             else:
@@ -656,14 +658,10 @@ class ExamValidator:
             self.log(self.lang_manager.get_string("log_backup_expected", len(backup_hashes)) + "\n")
 
             if not backup_hashes:
-                # Caso especial: No hay archivos de backup esperados.
-                # Se considera OK si tampoco hay carpeta de backup (si no se hizo ninguna modificación).
                 if not backup_folder:
                     self.log(self.lang_manager.get_string("log_backup_found_none"), "info")
                 else:
-                    # Esto podría ser un error si el log no se generó correctamente, pero aquí asumimos que es una advertencia.
                     self.log(self.lang_manager.get_string("log_backup_folder_error"), "warning")
-
             elif backup_folder:
                 validation_results = self.validate_backup_files(backup_folder, backup_hashes)
                 failed = [r for r in validation_results if not r.get('matches', False) and 'error' not in r]
@@ -679,10 +677,12 @@ class ExamValidator:
                         self.log(
                             self.lang_manager.get_string("log_backup_hash_error", result['file'], result['expected'],
                                                          result['calculated']) + "\n", "error")
+                    critical_error = True
                 else:
                     self.log(self.lang_manager.get_string("log_backup_ok"), "success")
             else:
                 self.log(self.lang_manager.get_string("log_backup_folder_error"), "error")
+                critical_error = True
 
             # 5. ACTIVIDAD SOSPECHOSA
             self.log(self.lang_manager.get_string("log_suspicious_header"), "header")
@@ -698,14 +698,14 @@ class ExamValidator:
                     self.log(self.lang_manager.get_string("log_suspicious_event"), "warning")
                     for event in suspicious_events:
                         self.log(self.lang_manager.get_string("log_suspicious_event_item", event) + "\n", "warning")
+                critical_error = True
             else:
                 self.log(self.lang_manager.get_string("log_suspicious_ok"), "success")
 
             # 6. RESUMEN FINAL
             self.log("\n" + self.lang_manager.get_string("log_summary_header"), "header")
 
-            all_ok = hash_matches and suspicious_lines <= 10
-            if all_ok:
+            if not critical_error:
                 self.log(self.lang_manager.get_string("log_summary_ok"), "success")
             else:
                 self.log(self.lang_manager.get_string("log_summary_error"), "error")
@@ -727,7 +727,7 @@ class ExamValidator:
         else:
             self.results_text.insert(tk.END, message)
         self.results_text.see(tk.END)
-        self.root.update()
+        self.root.update_idletasks()  # Clave para actualizar la UI rápidamente
 
 
 if __name__ == "__main__":
