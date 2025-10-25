@@ -5,6 +5,7 @@ import os
 import tempfile
 import shutil
 import json
+import traceback
 
 
 # --- LocalizationManager (Clase para gestionar las cadenas de texto) ---
@@ -34,7 +35,7 @@ class LocalizationManager:
             self.strings[lang_code] = {}
 
     def _create_dummy_file(self, lang_code, filename):
-        """Crea archivos dummy para pruebas si no existen."""
+        """Crea archivos dummy para pruebas si no existen, incluyendo los nuevos textos."""
         if lang_code == 'es':
             data = {
                 "window_title": "ExamWatcher Log Visualizer",
@@ -89,6 +90,12 @@ class LocalizationManager:
                 "log_suspicious_event": "\nEventos sospechosos:\n",
                 "log_suspicious_event_item": "  - {}",
                 "log_suspicious_ok": "✓ Dentro del límite permitido (10 líneas)\n",
+                # NUEVOS TEXTOS
+                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n5. APLICACIONES NO AUTORIZADAS DETECTADAS\n" + "=" * 80 + "\n",
+                "log_unauthorized_app_count": "⚠ {} aplicación(es) no autorizada(s) detectada(s):",
+                "log_unauthorized_app_item": "  - {}",
+                "log_unauthorized_app_ok": "✓ No se detectaron aplicaciones no autorizadas\n",
+                # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nRESUMEN FINAL\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ EXAMEN VÁLIDO - Sin problemas críticos detectados\n",
                 "log_summary_error": "✗ EXAMEN CON PROBLEMAS - Revisar errores arriba\n",
@@ -148,6 +155,12 @@ class LocalizationManager:
                 "log_suspicious_event": "\nSuspicious events:\n",
                 "log_suspicious_event_item": "  - {}",
                 "log_suspicious_ok": "✓ Within allowed limit (10 lines)\n",
+                # NUEVOS TEXTOS
+                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n5. UNAUTHORIZED APPLICATIONS DETECTED\n" + "=" * 80 + "\n",
+                "log_unauthorized_app_count": "⚠ {} unauthorized application(s) detected:",
+                "log_unauthorized_app_item": "  - {}",
+                "log_unauthorized_app_ok": "✓ No unauthorized applications detected\n",
+                # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nFINAL SUMMARY\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ VALID EXAM - No critical issues detected\n",
                 "log_summary_error": "✗ EXAM WITH ISSUES - Review errors above\n",
@@ -182,11 +195,9 @@ class ExamValidator:
         self.root = root
         self.lang_manager = LocalizationManager()
 
-        # 🔑 UX: Aumentar tamaño inicial y tamaño mínimo
         self.root.geometry("1000x800")
         self.root.minsize(800, 600)
 
-        # 🔑 UX: Configurar adaptabilidad de la raíz para manejo de maximización
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
 
@@ -245,15 +256,13 @@ class ExamValidator:
     def setup_ui(self):
         """Configura la interfaz principal con adaptabilidad y prioridad en el área del log."""
 
-        main_frame = ttk.Frame(self.root, padding="20 10 20 10")  # 🔑 UX: Aumentar padding
+        main_frame = ttk.Frame(self.root, padding="20 10 20 10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # 🔑 UX: Adaptabilidad Horizontal
         main_frame.grid_columnconfigure(1, weight=1)  # Columna del path label se expande
         main_frame.grid_columnconfigure(0, weight=0)
         main_frame.grid_columnconfigure(2, weight=0)
 
-        # 🔑 UX: Adaptabilidad Vertical
         main_frame.grid_rowconfigure(6, weight=1)  # Fila del log (ScrolledText) se expande
 
         # Título
@@ -268,7 +277,7 @@ class ExamValidator:
         self.label_step1.grid(row=2, column=0, sticky=tk.W, pady=5, padx="0 10")
 
         self.zip_label = ttk.Label(main_frame, text="", foreground="gray", anchor=tk.W, relief=tk.GROOVE,
-                                   padding="5 3")  # 🔑 UX: Relieve y padding para path
+                                   padding="5 3")
         self.zip_label.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=5)
 
         self.btn_zip = ttk.Button(main_frame, text="Examinar...", command=self.select_zip)
@@ -279,7 +288,7 @@ class ExamValidator:
         self.label_step2.grid(row=3, column=0, sticky=tk.W, pady=5, padx="0 10")
 
         self.ref_label = ttk.Label(main_frame, text="", foreground="gray", anchor=tk.W, relief=tk.GROOVE,
-                                   padding="5 3")  # 🔑 UX: Relieve y padding para path
+                                   padding="5 3")
         self.ref_label.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=5)
 
         self.btn_ref = ttk.Button(main_frame, text="Examinar...", command=self.select_reference)
@@ -290,17 +299,15 @@ class ExamValidator:
                                        command=self.validate_exam, state=tk.DISABLED,
                                        style='Accent.TButton')
         self.validate_btn.grid(row=4, column=0, columnspan=3, pady="20 15",
-                               sticky=(tk.W, tk.E))  # 🔑 UX: Expansión para prominencia
+                               sticky=(tk.W, tk.E))
 
         # Resultados Título
         self.label_results = ttk.Label(main_frame, text="", font=('Arial', 12, 'bold'))
-        # 🔑 UX: Aumento de pady para evitar que la 'g' en 'Log' se corte
         self.label_results.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady="15 5")
 
         # Área de Visualización del Log (ScrolledText)
         self.results_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD,
                                                       font=('Courier', 10), relief=tk.SUNKEN)
-        # 🔑 UX: Sticky N, S, W, E y rowconfigure weight=1 para maximizar el espacio
         self.results_text.grid(row=6, column=0, columnspan=3, pady="5 0",
                                sticky=(tk.W, tk.E, tk.N, tk.S))
 
@@ -456,12 +463,20 @@ class ExamValidator:
                     pass
         return backup_files
 
-    def count_suspicious_lines(self, log_messages):
-        total_lines = 0
+    def analyze_log_activity(self, log_messages):
+        """
+        Analiza el log en busca de:
+        1. Líneas de código cambiadas con red activa (sospechoso).
+        2. Aplicaciones no autorizadas detectadas.
+        """
+        total_suspicious_lines = 0
         suspicious_events = []
+        unauthorized_app_events = []
 
         for msg in log_messages:
+            # --- 1. Actividad Sospechosa (Red Activa) ---
             if '[SUSPICIOUS: network was active]' in msg:
+                # Ignorar eventos de backup
                 if '.copywatcher_backup' in msg:
                     continue
 
@@ -473,7 +488,7 @@ class ExamValidator:
                                 change = lines_part.split('[')[0].strip()
                                 change_value = int(change.replace('+', '').replace('-', ''))
                                 if change_value != 0:
-                                    total_lines += abs(change_value)
+                                    total_suspicious_lines += abs(change_value)
                                     suspicious_events.append(msg)
                         except:
                             pass
@@ -484,11 +499,17 @@ class ExamValidator:
                             lines_part = msg.split('lines)')[0].split(',')[-1].strip()
                             lines_count = int(lines_part.split()[0])
                             if lines_count > 0:
-                                total_lines += lines_count
+                                total_suspicious_lines += lines_count
                                 suspicious_events.append(msg)
                     except:
                         pass
-        return total_lines, suspicious_events
+
+            # --- 2. Aplicaciones no autorizadas (NUEVO) ---
+            # Patrón: "2025/10/26 00:03:29 - Detectado Chrome - Cierre el programa"
+            if ' - Detectado ' in msg and ' - Cierre el programa' in msg:
+                unauthorized_app_events.append(msg)
+
+        return total_suspicious_lines, suspicious_events, unauthorized_app_events
 
     def compare_with_reference(self, snapshot, reference_folder):
         differences = []
@@ -643,7 +664,7 @@ class ExamValidator:
                                                               diff['actual_size']) + "\n")
                         self.log(self.lang_manager.get_string("log_diff_lines", diff['expected_lines'],
                                                               diff['actual_lines']) + "\n")
-                    critical_error = True  # Las diferencias en snapshot inicial son un problema serio.
+                    critical_error = True
                 else:
                     self.log(self.lang_manager.get_string("log_snapshot_ok"), "success")
             else:
@@ -684,10 +705,12 @@ class ExamValidator:
                 self.log(self.lang_manager.get_string("log_backup_folder_error"), "error")
                 critical_error = True
 
-            # 5. ACTIVIDAD SOSPECHOSA
-            self.log(self.lang_manager.get_string("log_suspicious_header"), "header")
+            # Obtener todos los eventos de actividad
+            suspicious_lines, suspicious_events, unauthorized_app_events = self.analyze_log_activity(
+                parsed['log_messages'])
 
-            suspicious_lines, suspicious_events = self.count_suspicious_lines(parsed['log_messages'])
+            # 5. ACTIVIDAD SOSPECHOSA (INTERNET ACTIVO)
+            self.log(self.lang_manager.get_string("log_suspicious_header"), "header")
             self.log(self.lang_manager.get_string("log_suspicious_lines", suspicious_lines) + "\n")
 
             if suspicious_lines > 10:
@@ -702,7 +725,21 @@ class ExamValidator:
             else:
                 self.log(self.lang_manager.get_string("log_suspicious_ok"), "success")
 
-            # 6. RESUMEN FINAL
+            # 6. APLICACIONES NO AUTORIZADAS DETECTADAS (NUEVA SECCIÓN)
+            self.log(self.lang_manager.get_string("log_unauthorized_app_header"), "header")
+
+            if unauthorized_app_events:
+                self.log(
+                    self.lang_manager.get_string("log_unauthorized_app_count", len(unauthorized_app_events)) + "\n",
+                    "warning")
+                for event in unauthorized_app_events:
+                    self.log(self.lang_manager.get_string("log_unauthorized_app_item", event) + "\n", "warning")
+                # Las detecciones de apps no autorizadas son un error crítico
+                critical_error = True
+            else:
+                self.log(self.lang_manager.get_string("log_unauthorized_app_ok"), "success")
+
+            # 7. RESUMEN FINAL
             self.log("\n" + self.lang_manager.get_string("log_summary_header"), "header")
 
             if not critical_error:
@@ -712,7 +749,6 @@ class ExamValidator:
 
         except Exception as e:
             self.log(self.lang_manager.get_string("log_general_error", str(e)), "error")
-            import traceback
             self.log(traceback.format_exc(), "error")
         finally:
             if self.temp_dir and os.path.exists(self.temp_dir):
@@ -727,7 +763,7 @@ class ExamValidator:
         else:
             self.results_text.insert(tk.END, message)
         self.results_text.see(tk.END)
-        self.root.update_idletasks()  # Clave para actualizar la UI rápidamente
+        self.root.update_idletasks()
 
 
 if __name__ == "__main__":
