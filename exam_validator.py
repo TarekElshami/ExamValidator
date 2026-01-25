@@ -102,6 +102,7 @@ class LocalizationManager:
                 # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nRESUMEN FINAL\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ EXAMEN VÁLIDO - Sin problemas críticos detectados\n",
+                "log_summary_warning": "⚠ EXAMEN VÁLIDO CON ADVERTENCIAS - Se detectaron archivos de backup (Revisar)\n",
                 "log_summary_error": "✗ EXAMEN CON PROBLEMAS - Revisar errores arriba\n",
                 "log_general_error": "\nERROR GENERAL: {}\n"
             }
@@ -171,6 +172,7 @@ class LocalizationManager:
                 # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nFINAL SUMMARY\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ VALID EXAM - No critical issues detected\n",
+                "log_summary_warning": "⚠ VALID EXAM WITH WARNINGS - Backup files detected (Review)\n",
                 "log_summary_error": "✗ EXAM WITH ISSUES - Review errors above\n",
                 "log_general_error": "\nGENERAL ERROR: {}\n"
             }
@@ -769,10 +771,16 @@ class ExamValidator:
             # 7. RESUMEN FINAL
             self.log("\n" + self.lang_manager.get_string("log_summary_header"), "header")
 
-            if not critical_error:
-                self.log(self.lang_manager.get_string("log_summary_ok"), "success")
-            else:
+            has_backups = False
+            if 'backup_hashes' in locals() and backup_hashes:
+                has_backups = len(backup_hashes) > 0
+
+            if critical_error:
                 self.log(self.lang_manager.get_string("log_summary_error"), "error")
+            elif has_backups:
+                self.log(self.lang_manager.get_string("log_summary_warning"), "warning")
+            else:
+                self.log(self.lang_manager.get_string("log_summary_ok"), "success")
 
         except Exception as e:
             self.log(self.lang_manager.get_string("log_general_error", str(e)), "error")
