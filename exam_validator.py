@@ -90,8 +90,12 @@ class LocalizationManager:
                 "log_suspicious_event": "\nEventos sospechosos:\n",
                 "log_suspicious_event_item": "  - {}",
                 "log_suspicious_ok": "✓ Dentro del límite permitido (10 líneas)\n",
+                "log_network_header": "\n" + "=" * 80 + "\n5. DETECCIÓN DE CONEXIÓN (EVENTOS DE RED)\n" + "=" * 80 + "\n",
+                "log_network_count": "⚠ Se detectaron {} eventos de conexión a internet:",
+                "log_network_item": "  - {}",
+                "log_network_ok": "✓ No se detectaron eventos de conexión a internet\n",
                 # NUEVOS TEXTOS
-                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n5. APLICACIONES NO AUTORIZADAS DETECTADAS\n" + "=" * 80 + "\n",
+                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n6. APLICACIONES NO AUTORIZADAS DETECTADAS\n" + "=" * 80 + "\n",
                 "log_unauthorized_app_count": "⚠ {} aplicación(es) no autorizada(s) detectada(s):",
                 "log_unauthorized_app_item": "  - {}",
                 "log_unauthorized_app_ok": "✓ No se detectaron aplicaciones no autorizadas\n",
@@ -155,8 +159,12 @@ class LocalizationManager:
                 "log_suspicious_event": "\nSuspicious events:\n",
                 "log_suspicious_event_item": "  - {}",
                 "log_suspicious_ok": "✓ Within allowed limit (10 lines)\n",
+                "log_network_header": "\n" + "=" * 80 + "\n5. CONNECTION DETECTION (NETWORK EVENTS)\n" + "=" * 80 + "\n",
+                "log_network_count": "⚠ Detected {} internet connection events:",
+                "log_network_item": "  - {}",
+                "log_network_ok": "✓ No internet connection events detected\n",
                 # NUEVOS TEXTOS
-                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n5. UNAUTHORIZED APPLICATIONS DETECTED\n" + "=" * 80 + "\n",
+                "log_unauthorized_app_header": "\n" + "=" * 80 + "\n6. UNAUTHORIZED APPLICATIONS DETECTED\n" + "=" * 80 + "\n",
                 "log_unauthorized_app_count": "⚠ {} unauthorized application(s) detected:",
                 "log_unauthorized_app_item": "  - {}",
                 "log_unauthorized_app_ok": "✓ No unauthorized applications detected\n",
@@ -467,14 +475,16 @@ class ExamValidator:
         """
         Analiza el log en busca de:
         1. Líneas de código cambiadas con red activa (sospechoso).
-        2. Aplicaciones no autorizadas detectadas.
+        2. Eventos de conexión a internet (aunque no haya cambios).
+        3. Aplicaciones no autorizadas detectadas.
         """
         total_suspicious_lines = 0
         suspicious_events = []
+        network_events = []
         unauthorized_app_events = []
 
         for msg in log_messages:
-            # --- 1. Actividad Sospechosa (Red Activa) ---
+            # --- 1. Actividad Sospechosa (Red Activa + Cambios) ---
             if '[SUSPICIOUS: network was active]' in msg:
                 # Ignorar eventos de backup
                 if '.copywatcher_backup' in msg:
@@ -504,12 +514,19 @@ class ExamValidator:
                     except:
                         pass
 
-            # --- 2. Aplicaciones no autorizadas (NUEVO) ---
+            # --- 2. Detección de conexión aunque no haya cambiado nada ---
+            if "Network connection detected" in msg or "Conexión a red detectada" in msg or "Conexion a red detectada" in msg:
+                network_events.append(msg)
+
+            # --- 3. Aplicaciones no autorizadas ---
             # Patrón: "2025/10/26 00:03:29 - Detectado Chrome - Cierre el programa"
             if ' - Detectado ' in msg and ' - Cierre el programa' in msg:
                 unauthorized_app_events.append(msg)
+            # Versión en inglés por si acaso
+            if ' - Detected ' in msg and ' - Close the program' in msg:
+                unauthorized_app_events.append(msg)
 
-        return total_suspicious_lines, suspicious_events, unauthorized_app_events
+        return total_suspicious_lines, suspicious_events, network_events, unauthorized_app_events
 
     def compare_with_reference(self, snapshot, reference_folder):
         differences = []
@@ -706,7 +723,7 @@ class ExamValidator:
                 critical_error = True
 
             # Obtener todos los eventos de actividad
-            suspicious_lines, suspicious_events, unauthorized_app_events = self.analyze_log_activity(
+            suspicious_lines, suspicious_events, network_events, unauthorized_app_events = self.analyze_log_activity(
                 parsed['log_messages'])
 
             # 5. ACTIVIDAD SOSPECHOSA (INTERNET ACTIVO)
@@ -724,6 +741,16 @@ class ExamValidator:
                 critical_error = True
             else:
                 self.log(self.lang_manager.get_string("log_suspicious_ok"), "success")
+
+            self.log(self.lang_manager.get_string("log_network_header"), "header")
+
+            if network_events:
+                self.log(self.lang_manager.get_string("log_network_count", len(network_events)) + "\n", "warning")
+                for event in network_events:
+                    self.log(self.lang_manager.get_string("log_network_item", event) + "\n", "warning")
+
+            else:
+                self.log(self.lang_manager.get_string("log_network_ok"), "success")
 
             # 6. APLICACIONES NO AUTORIZADAS DETECTADAS (NUEVA SECCIÓN)
             self.log(self.lang_manager.get_string("log_unauthorized_app_header"), "header")
