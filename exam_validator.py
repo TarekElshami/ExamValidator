@@ -8,11 +8,8 @@ import json
 import traceback
 
 
-# --- LocalizationManager (Clase para gestionar las cadenas de texto) ---
-
 class LocalizationManager:
-    """Clase para cargar y gestionar las cadenas de texto localizadas."""
-
+    """Clase para gestionar el idioma."""
     def __init__(self, default_lang='es'):
         self.language = default_lang
         self.strings = {}
@@ -35,7 +32,6 @@ class LocalizationManager:
             self.strings[lang_code] = {}
 
     def _create_dummy_file(self, lang_code, filename):
-        """Crea archivos dummy para pruebas si no existen, incluyendo los nuevos textos."""
         if lang_code == 'es':
             data = {
                 "window_title": "ExamWatcher Log Visualizer",
@@ -94,12 +90,10 @@ class LocalizationManager:
                 "log_network_count": "⚠ Se detectaron {} eventos de conexión a internet:",
                 "log_network_item": "  - {}",
                 "log_network_ok": "✓ No se detectaron eventos de conexión a internet\n",
-                # NUEVOS TEXTOS
                 "log_unauthorized_app_header": "\n" + "=" * 80 + "\n6. APLICACIONES NO AUTORIZADAS DETECTADAS\n" + "=" * 80 + "\n",
                 "log_unauthorized_app_count": "⚠ {} aplicación(es) no autorizada(s) detectada(s):",
                 "log_unauthorized_app_item": "  - {}",
                 "log_unauthorized_app_ok": "✓ No se detectaron aplicaciones no autorizadas\n",
-                # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nRESUMEN FINAL\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ EXAMEN VÁLIDO - Sin problemas críticos detectados\n",
                 "log_summary_warning": "⚠ EXAMEN VÁLIDO CON ADVERTENCIAS - Se detectaron archivos de backup (Revisar)\n",
@@ -164,12 +158,10 @@ class LocalizationManager:
                 "log_network_count": "⚠ Detected {} internet connection events:",
                 "log_network_item": "  - {}",
                 "log_network_ok": "✓ No internet connection events detected\n",
-                # NUEVOS TEXTOS
                 "log_unauthorized_app_header": "\n" + "=" * 80 + "\n6. UNAUTHORIZED APPLICATIONS DETECTED\n" + "=" * 80 + "\n",
                 "log_unauthorized_app_count": "⚠ {} unauthorized application(s) detected:",
                 "log_unauthorized_app_item": "  - {}",
                 "log_unauthorized_app_ok": "✓ No unauthorized applications detected\n",
-                # FIN NUEVOS TEXTOS
                 "log_summary_header": "\n" + "=" * 80 + "\nFINAL SUMMARY\n" + "=" * 80 + "\n",
                 "log_summary_ok": "✓ VALID EXAM - No critical issues detected\n",
                 "log_summary_warning": "⚠ VALID EXAM WITH WARNINGS - Backup files detected (Review)\n",
@@ -754,7 +746,7 @@ class ExamValidator:
             else:
                 self.log(self.lang_manager.get_string("log_network_ok"), "success")
 
-            # 6. APLICACIONES NO AUTORIZADAS DETECTADAS (NUEVA SECCIÓN)
+            # 6. APLICACIONES NO AUTORIZADAS DETECTADAS
             self.log(self.lang_manager.get_string("log_unauthorized_app_header"), "header")
 
             if unauthorized_app_events:
