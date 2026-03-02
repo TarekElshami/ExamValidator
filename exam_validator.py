@@ -294,6 +294,7 @@ class ExamValidator:
                 if '.copywatcher_backup' in msg:
                     continue
 
+                suspicious_events.append(msg)
                 if 'MODIFIED:' in msg:
                     if 'lines:' in msg:
                         try:
@@ -534,7 +535,7 @@ class ExamValidator:
             self.log(self.lang_manager.get_string("log_suspicious_header"), "header")
             self.log(self.lang_manager.get_string("log_suspicious_lines", suspicious_lines) + "\n")
 
-            if suspicious_lines > 10:
+            if suspicious_lines > 0 or len(suspicious_events) > 0:
                 self.log(self.lang_manager.get_string("log_suspicious_limit_error") + "\n", "error")
                 self.log(self.lang_manager.get_string("log_suspicious_events_count", len(suspicious_events)) + "\n",
                          "warning")
@@ -552,7 +553,7 @@ class ExamValidator:
                 self.log(self.lang_manager.get_string("log_network_count", len(network_events)) + "\n", "warning")
                 for event in network_events:
                     self.log(self.lang_manager.get_string("log_network_item", event) + "\n", "warning")
-
+                critical_error = True
             else:
                 self.log(self.lang_manager.get_string("log_network_ok"), "success")
 
